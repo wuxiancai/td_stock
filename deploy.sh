@@ -7,6 +7,11 @@
 
 set -e  # 遇到错误立即退出
 
+# 设置字符编码
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export PYTHONIOENCODING=utf-8
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -107,7 +112,7 @@ check_project_files() {
     log_info "项目文件完整性检查通过"
 }
 
-# 检查系统版本
+# 检查系统版本和编码
 check_system() {
     log_step "检查系统版本..."
     
@@ -133,6 +138,37 @@ check_system() {
     fi
     
     log_info "系统检查通过: Ubuntu $VERSION_ID"
+    
+    # 检查和设置locale
+    check_locale
+}
+
+# 检查和设置locale
+check_locale() {
+    log_step "检查系统编码设置..."
+    
+    # 检查是否支持UTF-8
+    if ! locale -a | grep -q "C.UTF-8\|en_US.UTF-8\|zh_CN.UTF-8"; then
+        log_warn "系统缺少UTF-8 locale支持，正在安装..."
+        sudo apt update
+        sudo apt install -y locales
+        
+        # 生成UTF-8 locale
+        sudo locale-gen en_US.UTF-8
+        sudo update-locale LANG=en_US.UTF-8
+        
+        log_info "UTF-8 locale已安装，建议重启系统后再次运行脚本"
+    fi
+    
+    # 显示当前locale设置
+    log_info "当前编码设置: LANG=$LANG, LC_ALL=$LC_ALL"
+    
+    # 测试中文字符显示
+    if echo "测试中文字符显示" | grep -q "?"; then
+        log_warn "检测到字符编码问题，已设置UTF-8环境变量"
+    else
+        log_info "字符编码检查通过"
+    fi
 }
 
 # 更新系统
@@ -163,7 +199,10 @@ install_dependencies() {
         ufw \
         htop \
         tree \
-        vim
+        vim \
+        locales \
+        language-pack-en \
+        language-pack-zh-hans
     
     # 安装 TA-Lib 编译依赖
     log_info "安装 TA-Lib 编译依赖..."
@@ -282,10 +321,16 @@ setup_python_env() {
     log_info "项目文件复制完成"
     
     # 创建虚拟环境
+    log_info "创建Python虚拟环境..."
+    # 设置Python编码环境变量
+    export PYTHONIOENCODING=utf-8
+    export PYTHONLEGACYWINDOWSSTDIO=utf-8
+    
     python3 -m venv venv
     source venv/bin/activate
     
     # 升级pip
+    log_info "升级pip..."
     pip install --upgrade pip
     
     # 安装Python依赖
