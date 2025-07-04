@@ -1,0 +1,10 @@
+2025-07-04 09:47:33,816 - data_fetcher - INFO - 数据获取器初始化完成，数据目录: /Users/wuxiancai/九转指标选股法/data
+2025-07-04 09:48:14,330 - data_fetcher - INFO - 数据获取器初始化完成，数据目录: /Users/wuxiancai/九转指标选股法/data
+2025-07-04 09:49:32,409 - data_fetcher - INFO - 数据获取器初始化完成，数据目录: /Users/wuxiancai/九转指标选股法/data
+2025-07-04 09:49:32,409 - td_calculator - INFO - TD序列计算器初始化完成，Setup阈值: 3, 回看周期: 4
+2025-07-04 09:50:09,563 - data_fetcher - INFO - 数据获取器初始化完成，数据目录: /Users/wuxiancai/九转指标选股法/data
+2025-07-04 09:50:09,563 - td_calculator - INFO - TD序列计算器初始化完成，Setup阈值: 3, 回看周期: 4
+2025-07-04 09:50:37,559 - data_fetcher - INFO - 数据获取器初始化完成，数据目录: /Users/wuxiancai/九转指标选股法/data
+2025-07-04 09:50:37,559 - td_calculator - INFO - TD序列计算器初始化完成，Setup阈值: 3, 回看周期: 4
+2025-07-04 09:51:05,489 - data_fetcher - INFO - 数据获取器初始化完成，数据目录: /Users/wuxiancai/九转指标选股法/data
+2025-07-04 09:51:05,489 - td_calculator - INFO - TD序列计算器初始化完成，Setup阈值: 3, 回看周期: 4
