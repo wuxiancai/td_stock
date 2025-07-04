@@ -40,6 +40,37 @@ check_root() {
     fi
 }
 
+# 检查Python版本
+check_python_version() {
+    log_step "检查Python版本..."
+    
+    # 检查Python3是否可用
+    if ! command -v python3 &> /dev/null; then
+        log_error "Python3 未安装或不在PATH中"
+        exit 1
+    fi
+    
+    # 获取Python版本
+    PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+    
+    log_info "当前Python版本: $PYTHON_VERSION"
+    
+    # 检查版本要求（建议Python 3.8+）
+    if [[ $PYTHON_MAJOR -lt 3 ]] || [[ $PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 8 ]]; then
+        log_warn "当前Python版本 $PYTHON_VERSION 可能存在兼容性问题"
+        log_warn "建议使用Python 3.8或更高版本"
+        read -p "是否继续? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+    
+    log_info "Python版本检查通过"
+}
+
 # 预检查项目文件
 check_project_files() {
     log_step "检查项目文件完整性..."
@@ -601,6 +632,9 @@ main() {
     
     # 检查运行权限
     check_root
+    
+    # 检查Python版本
+    check_python_version
     
     # 预检查项目文件
     check_project_files

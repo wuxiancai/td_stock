@@ -1,35 +1,35 @@
 # A股九转序列识别系统 - Python依赖包
 # 核心依赖
-akshare>=1.12.0
-pandas>=2.0.0
-plotly>=5.15.0
-flask>=2.3.0
-apscheduler>=3.10.0
-gunicorn>=21.0.0
-numpy>=1.24.0
+akshare>=1.10.0
+pandas>=1.5.0
+plotly>=5.10.0
+flask>=2.0.0
+apscheduler>=3.8.0
+gunicorn>=20.0.0
+numpy>=1.21.0
 
 # 数据处理和分析
-scipy>=1.11.0
-ta-lib>=0.4.28
+scipy>=1.8.0
+ta-lib>=0.4.25
 
 # Web框架相关
-Werkzeug>=2.3.0
-Jinja2>=3.1.0
-MarkupSafe>=2.1.0
-Itsdangerous>=2.1.0
-click>=8.1.0
+Werkzeug>=2.0.0
+Jinja2>=3.0.0
+MarkupSafe>=2.0.0
+Itsdangerous>=2.0.0
+click>=8.0.0
 
 # 数据可视化
 kaleido>=0.2.1
-matplotlib>=3.7.0
-seaborn>=0.12.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
 
 # 网络请求
-requests>=2.31.0
-urllib3>=2.0.0
-certifi>=2023.7.0
-charset-normalizer>=3.2.0
-idna>=3.4
+requests>=2.28.0
+urllib3>=1.26.0
+certifi>=2022.12.0
+charset-normalizer>=2.1.0
+idna>=3.3
 
 # 任务调度
 pytz>=2023.3
@@ -73,8 +73,8 @@ python-dotenv>=1.0.0
 # 日志增强
 loguru>=0.7.0
 
-# 并发处理
-concurrent-futures>=3.1.0
+# 并发处理（Python 3.2+ 内置，无需安装）
+# concurrent-futures>=3.1.0  # 已内置为 concurrent.futures
 
 # 数据压缩
 lz4>=4.3.0
@@ -117,10 +117,10 @@ Flask-Talisman>=1.1.0
 typing-extensions>=4.8.0
 
 # 数据类（Python < 3.7兼容）
-dataclasses>=0.8; python_version < '3.7'
+# dataclasses>=0.8; python_version < '3.7'  # Python 3.7+ 内置
 
 # 路径操作（Python < 3.4兼容）
-pathlib2>=2.3.0; python_version < '3.4'
+# pathlib2>=2.3.0; python_version < '3.4'  # Python 3.4+ 内置
 
 # 开发和测试工具（可选）
 pytest>=7.4.0
@@ -149,8 +149,8 @@ ping3>=4.0.0
 chardet>=5.2.0
 
 # 时区处理（Python < 3.9兼容）
-backports.zoneinfo>=0.2.1; python_version < '3.9'
+# backports.zoneinfo>=0.2.1; python_version < '3.9'  # Python 3.9+ 内置
 
 # 版本兼容性
-importlib-metadata>=6.8.0; python_version < '3.8'
-zipp>=3.17.0; python_version < '3.8'
+# importlib-metadata>=6.8.0; python_version < '3.8'  # Python 3.8+ 内置
+# zipp>=3.17.0; python_version < '3.8'  # 通常不需要直接安装
