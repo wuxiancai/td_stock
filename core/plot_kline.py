@@ -90,8 +90,15 @@ class KLineChartPlotter:
                     low=df['low'],
                     close=df['close'],
                     name='K线',
-                    increasing_line_color='red',
-                    decreasing_line_color='green'
+                    increasing=dict(
+                        line=dict(color='#FF0000', width=1),  # 涨：红色
+                        fillcolor='#FF0000'
+                    ),
+                    decreasing=dict(
+                        line=dict(color='#00AA00', width=1),  # 跌：绿色
+                        fillcolor='#00AA00'
+                    ),
+                    line=dict(width=1)
                 )
                 
                 if show_volume:
@@ -131,77 +138,107 @@ class KLineChartPlotter:
             show_volume: 是否显示成交量
         """
         try:
-            # 检查是否有信号列
-            if 'setup_signal' not in df.columns:
-                self.logger.debug("数据中没有setup_signal列，跳过信号标记")
+            # 详细调试信息
+            self.logger.debug(f"_add_td_signals: 数据列名 = {list(df.columns)}")
+            self.logger.debug(f"_add_td_signals: 数据形状 = {df.shape}")
+            
+            # 检查是否有setup_count列
+            if 'buy_setup_count' not in df.columns or 'sell_setup_count' not in df.columns:
+                self.logger.debug("数据中没有setup_count列，跳过序列标记")
                 return
             
-            # 筛选有信号的数据点
-            signal_data = df[df['setup_signal'] != 0].copy()
-            
-            if signal_data.empty:
-                self.logger.debug("没有发现TD序列信号")
-                return
+            self.logger.debug(f"_add_td_signals: 找到TD序列列，开始添加标记")
             
             signal_count = 0
             
-            for _, row in signal_data.iterrows():
+            # 遍历所有数据点，标记所有非零的序列数字
+            for i, row in df.iterrows():
                 try:
-                    signal_type = row['setup_signal']
-                    position = row.get('signal_position', 'below' if signal_type == 1 else 'above')
-                    setup_count = row.get('buy_setup_count', 0) if signal_type == 1 else row.get('sell_setup_count', 0)
+                    buy_count = row.get('buy_setup_count', 0)
+                    sell_count = row.get('sell_setup_count', 0)
                     
-                    # 确定标记位置
-                    if position == 'above':
-                        # 上涨行情，标记在K线上方
-                        y_position = row['high'] * 1.02
-                        arrow_direction = 'down'
-                        color = 'red'
-                        symbol_text = f"{setup_count}"
-                    else:
-                        # 下跌行情，标记在K线下方
+                    # 买入序列标记（绿色，在K线下方）
+                    if buy_count > 0:
                         y_position = row['low'] * 0.98
-                        arrow_direction = 'up'
-                        color = 'green'
-                        symbol_text = f"{setup_count}"
+                        color = '#00AA00'
+                        symbol_text = str(buy_count)
+                        
+                        annotation = dict(
+                            x=row['date'],
+                            y=y_position,
+                            text=symbol_text,
+                            showarrow=True,
+                            arrowhead=2,
+                            arrowsize=1.2,
+                            arrowwidth=2.5,
+                            arrowcolor=color,
+                            ax=0,
+                            ay=35,  # 向上箭头
+                            font=dict(
+                                size=16,
+                                color=color,
+                                family="Arial Black"
+                            ),
+                            bgcolor="rgba(255,255,255,0.95)",
+                            bordercolor=color,
+                            borderwidth=2.5,
+                            borderpad=6,
+                            opacity=0.9
+                        )
+                        
+                        if show_volume:
+                            annotation['xref'] = 'x'
+                            annotation['yref'] = 'y'
+                            fig.add_annotation(annotation)
+                        else:
+                            fig.add_annotation(annotation)
+                        
+                        signal_count += 1
                     
-                    # 添加数字标记
-                    annotation = dict(
-                        x=row['date'],
-                        y=y_position,
-                        text=symbol_text,
-                        showarrow=True,
-                        arrowhead=2,
-                        arrowsize=1,
-                        arrowwidth=2,
-                        arrowcolor=color,
-                        ax=0,
-                        ay=-30 if arrow_direction == 'down' else 30,
-                        font=dict(
-                            size=14,
-                            color=color,
-                            family="Arial Black"
-                        ),
-                        bgcolor="white",
-                        bordercolor=color,
-                        borderwidth=2,
-                        borderpad=4,
-                        opacity=0.8
-                    )
-                    
-                    if show_volume:
-                        fig.add_annotation(annotation, row=1, col=1)
-                    else:
-                        fig.add_annotation(annotation)
-                    
-                    signal_count += 1
+                    # 卖出序列标记（红色，在K线上方）
+                    if sell_count > 0:
+                        y_position = row['high'] * 1.02
+                        color = '#FF0000'
+                        symbol_text = str(sell_count)
+                        
+                        annotation = dict(
+                            x=row['date'],
+                            y=y_position,
+                            text=symbol_text,
+                            showarrow=True,
+                            arrowhead=2,
+                            arrowsize=1.2,
+                            arrowwidth=2.5,
+                            arrowcolor=color,
+                            ax=0,
+                            ay=-35,  # 向下箭头
+                            font=dict(
+                                size=16,
+                                color=color,
+                                family="Arial Black"
+                            ),
+                            bgcolor="rgba(255,255,255,0.95)",
+                            bordercolor=color,
+                            borderwidth=2.5,
+                            borderpad=6,
+                            opacity=0.9
+                        )
+                        
+                        if show_volume:
+                            annotation['xref'] = 'x'
+                            annotation['yref'] = 'y'
+                            fig.add_annotation(annotation)
+                        else:
+                            fig.add_annotation(annotation)
+                        
+                        signal_count += 1
                     
                 except Exception as e:
-                    self.logger.warning(f"添加单个TD序列信号标记时发生错误: {str(e)}")
+                    self.logger.warning(f"添加TD序列标记时发生错误: {str(e)}")
                     continue
             
             if signal_count > 0:
-                self.logger.debug(f"成功添加了 {signal_count} 个TD序列信号标记")
+                self.logger.debug(f"成功添加了 {signal_count} 个TD序列标记")
                 
         except Exception as e:
             self.logger.error(f"添加TD序列信号标记时发生错误: {str(e)}")
@@ -224,12 +261,12 @@ class KLineChartPlotter:
             colors = []
             for i in range(len(df)):
                 if i == 0:
-                    colors.append('red')  # 第一天默认红色
+                    colors.append('#FF0000')  # 第一天默认红色
                 else:
                     if df.iloc[i]['close'] >= df.iloc[i-1]['close']:
-                        colors.append('red')  # 涨或平，红色
+                        colors.append('#FF0000')  # 涨或平，红色
                     else:
-                        colors.append('green')  # 跌，绿色
+                        colors.append('#00AA00')  # 跌，绿色
             
             # 添加成交量柱状图
             volume_trace = go.Bar(
@@ -265,7 +302,7 @@ class KLineChartPlotter:
                     'text': title,
                     'x': 0.5,
                     'xanchor': 'center',
-                    'font': {'size': 20}
+                    'font': {'size': 22, 'family': 'Arial Black', 'color': '#2E2E2E'}
                 },
                 xaxis_title="日期",
                 yaxis_title="价格",
@@ -273,18 +310,51 @@ class KLineChartPlotter:
                 showlegend=True,
                 height=self.chart_height,
                 width=self.chart_width,
-                hovermode='x unified'
+                hovermode='x unified',
+                plot_bgcolor='rgba(248,249,250,0.8)',
+                paper_bgcolor='white',
+                margin=dict(l=60, r=60, t=100, b=60),
+                font=dict(family='Arial', size=12, color='#2E2E2E')
             )
             
             # 设置x轴格式
             fig.update_xaxes(
                 rangeslider_visible=False,
-                type='date'
+                type='date',
+                gridcolor='rgba(128,128,128,0.3)',
+                gridwidth=1,
+                tickformat='%m-%d',
+                tickfont=dict(size=11, color='#2E2E2E'),
+                title_font=dict(size=14, color='#2E2E2E', family='Arial')
+            )
+            
+            # 设置y轴格式
+            fig.update_yaxes(
+                gridcolor='rgba(128,128,128,0.3)',
+                gridwidth=1,
+                tickfont=dict(size=11, color='#2E2E2E'),
+                title_font=dict(size=14, color='#2E2E2E', family='Arial'),
+                row=1, col=1
             )
             
             if show_volume:
-                # 设置成交量y轴标题
-                fig.update_yaxes(title_text="成交量", row=2, col=1)
+                # 设置成交量y轴标题和样式
+                fig.update_yaxes(
+                    title_text="成交量",
+                    gridcolor='rgba(128,128,128,0.2)',
+                    gridwidth=1,
+                    tickfont=dict(size=10, color='#2E2E2E'),
+                    title_font=dict(size=12, color='#2E2E2E', family='Arial'),
+                    row=2, col=1
+                )
+                # 设置成交量x轴样式
+                fig.update_xaxes(
+                    gridcolor='rgba(128,128,128,0.2)',
+                    gridwidth=1,
+                    tickformat='%m-%d',
+                    tickfont=dict(size=10, color='#2E2E2E'),
+                    row=2, col=1
+                )
             
             self.logger.debug(f"图表布局设置完成，尺寸: {self.chart_width}x{self.chart_height}")
             

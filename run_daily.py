@@ -8,6 +8,7 @@
 import os
 import sys
 import time
+import argparse
 from datetime import datetime, timedelta
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -279,7 +280,7 @@ def main():
     
     try:
         # 创建分析系统
-        system = TDSequentialAnalysis(
+        system = TDSequentialAnalysisSystem(
             max_stocks=args.max_stocks,
             test_mode=args.test
         )
@@ -287,7 +288,7 @@ def main():
         if args.test:
             # 测试模式
             logger.info("运行测试模式")
-            success = system.run_test_analysis(args.test_stocks)
+            success = system.run_test(args.test_stocks)
             if not success:
                 logger.error("测试模式执行失败")
                 sys.exit(1)

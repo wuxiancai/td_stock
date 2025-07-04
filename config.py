@@ -37,13 +37,28 @@ class Config:
     RETRY_DELAY = 1  # 重试延迟（秒）
     REQUEST_TIMEOUT = 30  # 请求超时时间（秒）
     
+    # 数据源配置
+    DATA_SOURCE = 'tonghuashun'  # 默认数据源: 'akshare', 'tonghuashun', 'ths'
+    DATA_SOURCE_CONFIG = {
+        'akshare': {
+            'enabled': True,
+            'priority': 1
+        },
+        'tonghuashun': {
+            'enabled': True,
+            'priority': 2,
+            'api_key': None,  # 同花顺API密钥
+            'api_secret': None  # 同花顺API密钥
+        }
+    }
+    
     # TD序列配置
     TD_SETUP_THRESHOLD = 3  # Setup信号阈值
     TD_LOOKBACK_PERIOD = 4  # 回看周期
     
     # Web服务配置
     WEB_HOST = '0.0.0.0'
-    WEB_PORT = 8080
+    WEB_PORT = 8081
     WEB_DEBUG = True
     SECRET_KEY = 'td_sequential_stock_analysis_2025'
     
@@ -57,7 +72,14 @@ class Config:
     
     # 调度配置
     SCHEDULE_TIME = '17:00'  # 每日执行时间
+    SCHEDULE_HOUR = 17  # 执行小时
+    SCHEDULE_MINUTE = 0  # 执行分钟
     TIMEZONE = 'Asia/Shanghai'
+    
+    # 股票分析配置
+    MAX_STOCKS = None  # 最大分析股票数量，None表示不限制
+    TEST_STOCKS = 10  # 测试模式股票数量
+    REQUEST_DELAY = 0.1  # 请求延迟（秒）
     
     @classmethod
     def init_directories(cls):

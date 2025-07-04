@@ -79,6 +79,11 @@ class WebStockAnalyzer:
         获取股票K线图文件路径
         """
         try:
+            # 标准化股票代码格式
+            if stock_code and len(stock_code) < 6:
+                # 如果是短格式（如"2"），补齐为6位
+                stock_code = stock_code.zfill(6)
+            
             # 查找对应的HTML文件
             chart_files = glob.glob(os.path.join(html_dir, f"{stock_code}_*.html"))
             

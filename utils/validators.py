@@ -94,6 +94,19 @@ class DataValidator:
         except (ValueError, TypeError):
             raise ValidationException(f"无效的{field_name}格式: {volume}", field_name)
     
+    def validate_td_setup_count(self, setup_count: Union[str, int]) -> int:
+        """验证TD序列计数"""
+        if setup_count is None:
+            return 0
+        
+        try:
+            setup_count = int(setup_count)
+            if setup_count < 0 or setup_count > 13:
+                return 0  # 超出范围的值设为0
+            return setup_count
+        except (ValueError, TypeError):
+            return 0
+    
     def validate_dataframe_structure(self, df: pd.DataFrame, 
                                    required_columns: List[str]) -> pd.DataFrame:
         """验证DataFrame结构"""
@@ -127,6 +140,17 @@ class DataValidator:
                     'close': self.validate_price(row['close'], 'close'),
                     'volume': self.validate_volume(row['volume'])
                 }
+                
+                # 保留TD序列相关列（如果存在）
+                if 'buy_setup_count' in row:
+                    validated_row['buy_setup_count'] = self.validate_td_setup_count(row['buy_setup_count'])
+                if 'sell_setup_count' in row:
+                    validated_row['sell_setup_count'] = self.validate_td_setup_count(row['sell_setup_count'])
+                
+                # 保留其他可能的额外列
+                for col in df.columns:
+                    if col not in required_columns and col not in ['buy_setup_count', 'sell_setup_count']:
+                        validated_row[col] = row[col]
                 
                 # 验证价格逻辑关系
                 if validated_row['high'] < max(validated_row['open'], validated_row['close']):

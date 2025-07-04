@@ -19,13 +19,15 @@ from utils import (
     get_logger, log_execution_time, handle_exceptions, retry_on_exception,
     cached, DataFetchException, validate_stock_code, clean_kline_data
 )
+from core.data_sources import DataSourceFactory
 
 class StockDataFetcher:
     """
     股票数据获取器
+    支持多种数据源
     """
     
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir=None, data_source=None):
         self.config = get_config()
         self.logger = get_logger('data_fetcher')
         
@@ -38,7 +40,14 @@ class StockDataFetcher:
         os.makedirs(self.raw_dir, exist_ok=True)
         os.makedirs(self.processed_dir, exist_ok=True)
         
-        self.logger.info(f"数据获取器初始化完成，数据目录: {self.data_dir}")
+        # 初始化数据源
+        self.data_source_type = data_source or self.config.DATA_SOURCE
+        self.data_source = DataSourceFactory.create_data_source(
+            self.data_source_type, 
+            self.config
+        )
+        
+        self.logger.info(f"数据获取器初始化完成，数据目录: {self.data_dir}，数据源: {self.data_source_type}")
     
     @cached(timeout=3600, key_prefix='stock_list_')
     @retry_on_exception(max_retries=3, delay=2.0)
@@ -49,11 +58,11 @@ class StockDataFetcher:
         获取A股所有股票代码列表
         包括沪深主板、创业板、科创板
         """
-        self.logger.info("开始获取股票代码列表")
+        self.logger.info(f"开始获取股票代码列表 (数据源: {self.data_source_type})")
         
         try:
-            # 获取沪深A股股票列表
-            stock_list = ak.stock_info_a_code_name()
+            # 使用配置的数据源获取股票列表
+            stock_list = self.data_source.get_stock_list()
             
             if stock_list.empty:
                 raise DataFetchException("获取到的股票列表为空")
@@ -70,7 +79,7 @@ class StockDataFetcher:
             cleaned_stocks = data_cleaner.clean_stock_list(stock_list.to_dict('records'))
             stock_list = pd.DataFrame(cleaned_stocks)
             
-            self.logger.info(f"获取到 {len(stock_list)} 只有效股票")
+            self.logger.info(f"获取到 {len(stock_list)} 只有效股票 (数据源: {self.data_source_type})")
             
             # 保存到CSV
             stock_list_file = os.path.join(self.raw_dir, f"stock_list_{datetime.now().strftime('%Y%m%d')}.csv")
@@ -79,7 +88,7 @@ class StockDataFetcher:
             return stock_list
             
         except Exception as e:
-            self.logger.error(f"获取股票列表失败: {str(e)}")
+            self.logger.error(f"获取股票列表失败 (数据源: {self.data_source_type}): {str(e)}")
             if isinstance(e, DataFetchException):
                 raise
             else:
@@ -104,73 +113,19 @@ class StockDataFetcher:
         stock_code = validate_stock_code(stock_code)
         days = days or self.config.STOCK_DATA_PERIOD
         
-        self.logger.debug(f"开始获取 {stock_code} 的K线数据，周期: {days}天")
+        self.logger.debug(f"开始获取 {stock_code} 的K线数据，周期: {days}天 (数据源: {self.data_source_type})")
         
         try:
-            # 计算开始日期
-            end_date = datetime.now().strftime('%Y%m%d')
-            start_date = (datetime.now() - timedelta(days=days*2)).strftime('%Y%m%d')  # 多取一些数据以防节假日
-            
-            # 获取K线数据
-            kline_data = ak.stock_zh_a_hist(
-                symbol=stock_code,
-                period="daily",
-                start_date=start_date,
-                end_date=end_date,
-                adjust="qfq"  # 前复权
-            )
+            # 使用配置的数据源获取K线数据
+            kline_data = self.data_source.get_stock_kline(stock_code, days)
             
             if kline_data.empty:
                 raise DataFetchException(f"股票 {stock_code} 没有K线数据", stock_code=stock_code)
             
-            # 动态处理列名，适应不同的AkShare返回格式
-            original_columns = kline_data.columns.tolist()
-            self.logger.debug(f"原始列名 [{stock_code}]: {original_columns}")
-            
-            # 创建列名映射字典
-            column_mapping = {}
-            required_columns = ['date', 'open', 'high', 'low', 'close', 'volume']
-            
-            # 根据实际列数和常见模式进行映射
-            if len(original_columns) >= 6:
-                # 标准映射：日期、开盘、最高、最低、收盘、成交量
-                for i, col_name in enumerate(required_columns):
-                    if i < len(original_columns):
-                        column_mapping[original_columns[i]] = col_name
-            else:
-                raise DataFetchException(
-                    f"股票 {stock_code} 数据列数不足: {len(original_columns)}",
-                    stock_code=stock_code
-                )
-            
-            # 重命名列
-            kline_data = kline_data.rename(columns=column_mapping)
-            
-            # 只保留需要的列（如果存在）
-            available_columns = [col for col in required_columns if col in kline_data.columns]
-            kline_data = kline_data[available_columns]
-            
-            # 转换数据类型
-            kline_data['date'] = pd.to_datetime(kline_data['date'])
-            for col in ['open', 'high', 'low', 'close', 'volume']:
-                kline_data[col] = pd.to_numeric(kline_data[col], errors='coerce')
-            
-            # 删除包含NaN的行
-            original_len = len(kline_data)
-            kline_data = kline_data.dropna()
-            if len(kline_data) < original_len:
-                self.logger.warning(f"股票 {stock_code} 清理了 {original_len - len(kline_data)} 条无效数据")
-            
-            # 按日期排序
-            kline_data = kline_data.sort_values('date').reset_index(drop=True)
-            
-            # 只取最近的指定天数
-            kline_data = kline_data.tail(days)
-            
             # 数据验证和清洗
             kline_data = clean_kline_data(kline_data, stock_code)
             
-            self.logger.info(f"成功获取股票 {stock_code} 的 {len(kline_data)} 条K线数据")
+            self.logger.info(f"成功获取股票 {stock_code} 的 {len(kline_data)} 条K线数据 (数据源: {self.data_source_type})")
             
             return kline_data
             
