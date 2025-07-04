@@ -41,13 +41,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class TDSequentialAnalysisSystem:
-    def __init__(self, max_stocks=None, test_mode=False):
+    def __init__(self, max_stocks=None, test_mode=False, stock_prefix=None, analyze_all=False):
         """
         初始化分析系统
         
         Args:
             max_stocks: 最大分析股票数量（用于测试）
             test_mode: 测试模式，不启动定时任务
+            stock_prefix: 股票代码前缀过滤（如'0', '2', '3', '6'）
+            analyze_all: 是否分析全部股票
         """
         # 获取配置和初始化日志
         self.config = get_config()
@@ -55,6 +57,8 @@ class TDSequentialAnalysisSystem:
         
         self.max_stocks = max_stocks
         self.test_mode = test_mode
+        self.stock_prefix = stock_prefix
+        self.analyze_all = analyze_all
         
         # 初始化各个模块
         self.fetcher = StockDataFetcher()
@@ -70,6 +74,16 @@ class TDSequentialAnalysisSystem:
         os.makedirs(self.processed_dir, exist_ok=True)
         os.makedirs(self.html_dir, exist_ok=True)
         
+        # 记录分析模式
+        if self.analyze_all:
+            self.logger.info("分析模式: 全部A股股票")
+        elif self.stock_prefix:
+            self.logger.info(f"分析模式: {self.stock_prefix}开头的股票")
+        elif self.max_stocks:
+            self.logger.info(f"分析模式: 限制{self.max_stocks}只股票")
+        else:
+            self.logger.info("分析模式: 默认配置")
+            
         self.logger.info("TD序列分析系统初始化完成")
         self.logger.debug(f"数据目录: {self.data_dir}, 处理目录: {self.processed_dir}")
     
@@ -86,16 +100,22 @@ class TDSequentialAnalysisSystem:
             try:
                 # 步骤1: 获取股票数据
                 self.logger.info("步骤1: 获取股票数据")
-                all_stocks_data = safe_execute(
+                
+                # 根据参数设置股票过滤条件
+                effective_max_stocks = None if self.analyze_all else self.max_stocks
+                
+                fetch_result = safe_execute(
                     self.fetcher.fetch_all_stocks_data,
-                    max_stocks=self.max_stocks,
-                    delay=self.config.REQUEST_DELAY
+                    max_stocks=effective_max_stocks,
+                    delay=self.config.REQUEST_DELAY,
+                    stock_prefix=self.stock_prefix
                 )
                 
-                if not all_stocks_data:
+                if not fetch_result or not fetch_result.get('data'):
                     raise TDAnalysisException("未获取到任何股票数据")
                 
-                self.logger.info(f"成功获取 {len(all_stocks_data)} 只股票的数据")
+                all_stocks_data = fetch_result['data']
+                self.logger.info(f"成功获取 {len(all_stocks_data)} 只股票的数据，总计 {fetch_result['success']}/{fetch_result['total']} 成功")
             
                 # 步骤2: 计算九转序列并筛选信号股票
                 self.logger.info("步骤2: 计算九转序列指标")
@@ -115,17 +135,20 @@ class TDSequentialAnalysisSystem:
                 self.logger.info("步骤3: 计算信号股票的完整九转序列")
                 stocks_with_td = {}
                 
-                for stock_code in signal_stocks['stock_code']:
-                    if stock_code in all_stocks_data:
-                        kline_data = all_stocks_data[stock_code]
-                        td_data, has_signal = safe_execute(
-                            self.calculator.analyze_single_stock,
-                            stock_code, kline_data
-                        )
-                        if has_signal and not td_data.empty:
-                            # 获取股票名称（这里简化处理，实际可以从股票列表获取）
-                            stock_name = f"股票{stock_code}"
-                            stocks_with_td[stock_code] = (stock_name, td_data)
+                if not signal_stocks.empty and 'stock_code' in signal_stocks.columns:
+                    for stock_code in signal_stocks['stock_code']:
+                        if stock_code in all_stocks_data:
+                            kline_data = all_stocks_data[stock_code]
+                            td_data, has_signal = safe_execute(
+                                self.calculator.analyze_single_stock,
+                                stock_code, kline_data
+                            )
+                            if has_signal and not td_data.empty:
+                                # 获取股票名称（这里简化处理，实际可以从股票列表获取）
+                                stock_name = f"股票{stock_code}"
+                                stocks_with_td[stock_code] = (stock_name, td_data)
+                else:
+                    self.logger.info("没有发现信号股票，跳过九转序列计算")
                 
                 self.logger.info(f"完成 {len(stocks_with_td)} 只股票的九转序列计算")
             
@@ -272,17 +295,37 @@ def main():
     parser.add_argument('--test', action='store_true', help='测试模式')
     parser.add_argument('--max-stocks', type=int, default=config.MAX_STOCKS, help='最大股票数量')
     parser.add_argument('--test-stocks', type=int, default=config.TEST_STOCKS, help='测试股票数量')
+    parser.add_argument('--all', action='store_true', help='分析全部A股股票')
+    parser.add_argument('--0', action='store_true', dest='prefix_0', help='分析所有0开头的股票')
+    parser.add_argument('--2', action='store_true', dest='prefix_2', help='分析所有2开头的股票')
+    parser.add_argument('--3', action='store_true', dest='prefix_3', help='分析所有3开头的股票')
+    parser.add_argument('--6', action='store_true', dest='prefix_6', help='分析所有6开头的股票')
     
     args = parser.parse_args()
     
+    # 确定股票代码前缀和分析模式
+    stock_prefix = None
+    analyze_all = args.all
+    
+    if args.prefix_0:
+        stock_prefix = '0'
+    elif args.prefix_2:
+        stock_prefix = '2'
+    elif args.prefix_3:
+        stock_prefix = '3'
+    elif args.prefix_6:
+        stock_prefix = '6'
+    
     logger.info("九转序列A股分析系统启动")
-    logger.debug(f"参数: test={args.test}, max_stocks={args.max_stocks}, test_stocks={args.test_stocks}")
+    logger.debug(f"参数: test={args.test}, max_stocks={args.max_stocks}, test_stocks={args.test_stocks}, all={analyze_all}, prefix={stock_prefix}")
     
     try:
         # 创建分析系统
         system = TDSequentialAnalysisSystem(
             max_stocks=args.max_stocks,
-            test_mode=args.test
+            test_mode=args.test,
+            stock_prefix=stock_prefix,
+            analyze_all=analyze_all
         )
         
         if args.test:

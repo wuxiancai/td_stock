@@ -130,18 +130,50 @@ class AkShareDataSource(BaseDataSource):
             
             # 创建列名映射字典
             column_mapping = {}
-            required_columns = ['date', 'open', 'high', 'low', 'close', 'volume']
             
-            # 根据实际列数和常见模式进行映射
-            if len(original_columns) >= 6:
-                # 标准映射：日期、开盘、最高、最低、收盘、成交量
-                for i, col_name in enumerate(required_columns):
-                    if i < len(original_columns):
-                        column_mapping[original_columns[i]] = col_name
-            else:
-                raise DataFetchException(
-                    f"股票 {stock_code} 数据列数不足: {len(original_columns)}"
-                )
+            # 根据AkShare的实际列名进行智能映射
+            for col in original_columns:
+                col_lower = col.strip().lower()
+                if '日期' in col or 'date' in col_lower:
+                    column_mapping[col] = 'date'
+                elif '开盘' in col or 'open' in col_lower:
+                    column_mapping[col] = 'open'
+                elif '最高' in col or 'high' in col_lower:
+                    column_mapping[col] = 'high'
+                elif '最低' in col or 'low' in col_lower:
+                    column_mapping[col] = 'low'
+                elif '收盘' in col or 'close' in col_lower:
+                    column_mapping[col] = 'close'
+                elif '成交量' in col or 'volume' in col_lower:
+                    column_mapping[col] = 'volume'
+            
+            # 检查是否有必要的列
+            required_columns = ['date', 'open', 'high', 'low', 'close', 'volume']
+            mapped_columns = list(column_mapping.values())
+            missing_columns = [col for col in required_columns if col not in mapped_columns]
+            
+            if missing_columns:
+                self.logger.warning(f"股票 {stock_code} 缺少列: {missing_columns}，尝试按位置映射")
+                # 如果智能映射失败，回退到位置映射（跳过股票代码列）
+                column_mapping = {}
+                if len(original_columns) >= 6:
+                    # 通常格式：日期、股票代码、开盘、收盘、最高、最低、成交量...
+                    # 跳过股票代码列
+                    position_mapping = {
+                        0: 'date',      # 日期
+                        2: 'open',      # 开盘（跳过股票代码）
+                        3: 'close',     # 收盘
+                        4: 'high',      # 最高
+                        5: 'low',       # 最低
+                        6: 'volume'     # 成交量
+                    }
+                    for pos, col_name in position_mapping.items():
+                        if pos < len(original_columns):
+                            column_mapping[original_columns[pos]] = col_name
+                else:
+                    raise DataFetchException(
+                        f"股票 {stock_code} 数据列数不足: {len(original_columns)}"
+                    )
             
             # 重命名列
             kline_data = kline_data.rename(columns=column_mapping)
@@ -266,20 +298,20 @@ class TongHuaShunDataSource(BaseDataSource):
     def get_stock_list(self) -> pd.DataFrame:
         """
         获取股票列表
-        注意：这是一个示例实现，实际需要根据同花顺API文档调整
+        注意：当前实现会回退到AkShare获取数据，实际需要根据同花顺API文档调整
         """
         try:
             self.logger.info("开始获取股票代码列表 (同花顺)")
             
             # 这里应该调用同花顺的股票列表API
-            # 由于没有实际的API密钥，这里使用模拟数据
-            stock_list = pd.DataFrame({
-                'code': ['000001', '000002', '300040'],
-                'name': ['平安银行', '万科A', '九洲集团']
-            })
+            # 由于没有实际的API密钥，暂时回退到AkShare获取数据
             
-            self.logger.info(f"获取到 {len(stock_list)} 只股票 (同花顺)")
-            return stock_list
+            # 临时解决方案：回退到AkShare获取股票列表
+            self.logger.info("同花顺数据源暂时回退到AkShare获取股票列表")
+            
+            # 使用AkShare作为备用数据源
+            akshare_source = AkShareDataSource(self.config)
+            return akshare_source.get_stock_list()
             
         except Exception as e:
             self.logger.error(f"同花顺获取股票列表失败: {str(e)}")
@@ -288,7 +320,7 @@ class TongHuaShunDataSource(BaseDataSource):
     def get_stock_kline(self, stock_code: str, days: int = 60) -> pd.DataFrame:
         """
         获取股票K线数据
-        注意：这是一个示例实现，实际需要根据同花顺API文档调整
+        注意：当前实现会回退到AkShare获取数据，实际需要根据同花顺API文档调整
         """
         stock_code = validate_stock_code(stock_code)
         
@@ -296,7 +328,7 @@ class TongHuaShunDataSource(BaseDataSource):
             self.logger.debug(f"开始获取 {stock_code} 的K线数据 (同花顺)")
             
             # 这里应该调用同花顺的K线数据API
-            # 由于没有实际的API，这里返回空数据框，实际使用时需要实现API调用
+            # 由于没有实际的API，暂时回退到AkShare获取数据
             
             # 示例：构造API请求
             # url = f"{self.base_url}/api/qt/stock/kline/get"
@@ -308,11 +340,12 @@ class TongHuaShunDataSource(BaseDataSource):
             # response = requests.get(url, params=params, headers=self.headers)
             # data = response.json()
             
-            # 暂时返回空数据框，提示用户需要配置API
-            self.logger.warning(f"同花顺数据源需要配置API密钥，当前返回空数据")
+            # 临时解决方案：回退到AkShare获取数据
+            self.logger.info(f"同花顺数据源暂时回退到AkShare获取 {stock_code} 的K线数据")
             
-            # 返回标准格式的空数据框
-            return pd.DataFrame(columns=['date', 'open', 'high', 'low', 'close', 'volume'])
+            # 使用AkShare作为备用数据源
+            akshare_source = AkShareDataSource(self.config)
+            return akshare_source.get_stock_kline(stock_code, days)
             
         except Exception as e:
             self.logger.error(f"同花顺获取股票 {stock_code} K线数据失败: {str(e)}")

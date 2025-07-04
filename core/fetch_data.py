@@ -76,7 +76,23 @@ class StockDataFetcher:
             
             # 数据清洗和验证
             from utils.validators import data_cleaner
-            cleaned_stocks = data_cleaner.clean_stock_list(stock_list.to_dict('records'))
+            # 转换字段名以匹配清洗器期望的格式
+            stock_records = stock_list.to_dict('records')
+            for record in stock_records:
+                if 'code' in record:
+                    record['stock_code'] = record['code']
+                if 'name' in record:
+                    record['stock_name'] = record['name']
+            
+            cleaned_stocks = data_cleaner.clean_stock_list(stock_records)
+            
+            # 转换回原始字段名格式
+            for cleaned_stock in cleaned_stocks:
+                if 'stock_code' in cleaned_stock:
+                    cleaned_stock['code'] = cleaned_stock['stock_code']
+                if 'stock_name' in cleaned_stock:
+                    cleaned_stock['name'] = cleaned_stock['stock_name']
+            
             stock_list = pd.DataFrame(cleaned_stocks)
             
             self.logger.info(f"获取到 {len(stock_list)} 只有效股票 (数据源: {self.data_source_type})")
@@ -140,13 +156,14 @@ class StockDataFetcher:
     
     @log_execution_time
     @handle_exceptions(context='批量获取股票数据')
-    def fetch_all_stocks_data(self, max_stocks=None, delay=None):
+    def fetch_all_stocks_data(self, max_stocks=None, delay=None, stock_prefix=None):
         """
         批量获取所有股票的K线数据
         
         Args:
             max_stocks: 最大获取股票数量，None表示获取所有
             delay: 请求间隔时间（秒），默认使用配置值
+            stock_prefix: 股票代码前缀过滤（如'0', '2', '3', '6'），None表示不过滤
         
         Returns:
             dict: 包含统计信息的字典
@@ -158,6 +175,15 @@ class StockDataFetcher:
             stock_list = self.get_stock_list()
             if stock_list.empty:
                 raise DataFetchException("没有获取到股票列表")
+            
+            # 根据股票代码前缀过滤
+            if stock_prefix:
+                original_count = len(stock_list)
+                stock_list = stock_list[stock_list['code'].str.startswith(stock_prefix)]
+                self.logger.info(f"按前缀 '{stock_prefix}' 过滤股票: {len(stock_list)}/{original_count}")
+                
+                if stock_list.empty:
+                    raise DataFetchException(f"没有找到以 '{stock_prefix}' 开头的股票")
             
             # 限制股票数量
             if max_stocks:
