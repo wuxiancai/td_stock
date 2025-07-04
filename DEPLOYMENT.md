@@ -68,7 +68,7 @@ ssh-copy-id username@server_ip
 
 ```bash
 # 进入项目目录
-cd /path/to/九转指标选股法
+cd /path/to/td_stock
 
 # 给部署脚本执行权限
 chmod +x deploy.sh

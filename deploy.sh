@@ -154,44 +154,46 @@ setup_python_env() {
         fi
     fi
     
-    mkdir -p "$PROJECT_DIR"
-    cd "$PROJECT_DIR"
-    
     # 复制项目文件
     log_info "复制项目文件..."
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    if [[ "$SCRIPT_DIR" != "$PROJECT_DIR" ]]; then
-        # 检查源目录是否存在文件
-        if ls "$SCRIPT_DIR"/* >/dev/null 2>&1; then
-            cp -r "$SCRIPT_DIR"/* .
-        else
-            log_error "源目录 $SCRIPT_DIR 中没有找到文件"
+    
+    # 检查源目录是否存在文件
+    if ! ls "$SCRIPT_DIR"/* >/dev/null 2>&1; then
+        log_error "源目录 $SCRIPT_DIR 中没有找到文件"
+        exit 1
+    fi
+    
+    # 检查关键文件是否存在于源目录
+    REQUIRED_FILES=("requirements.txt" "config.py" "run_daily.py")
+    REQUIRED_DIRS=("core" "utils" "web")
+    
+    log_info "检查源目录中的关键文件..."
+    for file in "${REQUIRED_FILES[@]}"; do
+        if [[ ! -f "$SCRIPT_DIR/$file" ]]; then
+            log_error "关键文件 $file 不存在于源目录 $SCRIPT_DIR"
+            log_error "请确保在项目根目录运行此脚本"
             exit 1
         fi
-    else
-        log_info "脚本已在目标目录中运行，检查关键文件..."
-        # 检查关键文件是否存在
-        REQUIRED_FILES=("requirements.txt" "config.py" "run_daily.py")
-        REQUIRED_DIRS=("core" "utils" "web")
-        
-        for file in "${REQUIRED_FILES[@]}"; do
-            if [[ ! -f "$file" ]]; then
-                log_error "关键文件 $file 不存在于当前目录"
-                log_error "请确保在项目根目录运行此脚本，或将脚本放在其他目录"
-                exit 1
-            fi
-        done
-        
-        for dir in "${REQUIRED_DIRS[@]}"; do
-            if [[ ! -d "$dir" ]]; then
-                log_error "关键目录 $dir 不存在于当前目录"
-                log_error "请确保在项目根目录运行此脚本，或将脚本放在其他目录"
-                exit 1
-            fi
-        done
-        
-        log_info "关键文件和目录检查通过"
-    fi
+    done
+    
+    for dir in "${REQUIRED_DIRS[@]}"; do
+        if [[ ! -d "$SCRIPT_DIR/$dir" ]]; then
+            log_error "关键目录 $dir 不存在于源目录 $SCRIPT_DIR"
+            log_error "请确保在项目根目录运行此脚本"
+            exit 1
+        fi
+    done
+    
+    log_info "源目录文件检查通过"
+    
+    # 创建项目目录并复制文件
+    mkdir -p "$PROJECT_DIR"
+    cd "$PROJECT_DIR"
+    
+    # 复制所有文件
+    cp -r "$SCRIPT_DIR"/* .
+    log_info "项目文件复制完成"
     
     # 创建虚拟环境
     python3 -m venv venv
