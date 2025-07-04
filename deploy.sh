@@ -40,6 +40,42 @@ check_root() {
     fi
 }
 
+# 预检查项目文件
+check_project_files() {
+    log_step "检查项目文件完整性..."
+    
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    cd "$SCRIPT_DIR"
+    
+    # 检查关键文件
+    REQUIRED_FILES=("requirements.txt" "config.py" "run_daily.py" "test_system.py")
+    REQUIRED_DIRS=("core" "utils" "web")
+    
+    log_info "检查关键文件..."
+    for file in "${REQUIRED_FILES[@]}"; do
+        if [[ ! -f "$file" ]]; then
+            log_error "关键文件 $file 不存在"
+            log_error "当前目录: $SCRIPT_DIR"
+            log_error "请确保在项目根目录运行此脚本"
+            exit 1
+        fi
+        log_info "✓ $file"
+    done
+    
+    log_info "检查关键目录..."
+    for dir in "${REQUIRED_DIRS[@]}"; do
+        if [[ ! -d "$dir" ]]; then
+            log_error "关键目录 $dir 不存在"
+            log_error "当前目录: $SCRIPT_DIR"
+            log_error "请确保在项目根目录运行此脚本"
+            exit 1
+        fi
+        log_info "✓ $dir/"
+    done
+    
+    log_info "项目文件完整性检查通过"
+}
+
 # 检查系统版本
 check_system() {
     log_step "检查系统版本..."
@@ -133,7 +169,28 @@ setup_python_env() {
             exit 1
         fi
     else
-        log_info "脚本已在目标目录中运行，跳过文件复制"
+        log_info "脚本已在目标目录中运行，检查关键文件..."
+        # 检查关键文件是否存在
+        REQUIRED_FILES=("requirements.txt" "config.py" "run_daily.py")
+        REQUIRED_DIRS=("core" "utils" "web")
+        
+        for file in "${REQUIRED_FILES[@]}"; do
+            if [[ ! -f "$file" ]]; then
+                log_error "关键文件 $file 不存在于当前目录"
+                log_error "请确保在项目根目录运行此脚本，或将脚本放在其他目录"
+                exit 1
+            fi
+        done
+        
+        for dir in "${REQUIRED_DIRS[@]}"; do
+            if [[ ! -d "$dir" ]]; then
+                log_error "关键目录 $dir 不存在于当前目录"
+                log_error "请确保在项目根目录运行此脚本，或将脚本放在其他目录"
+                exit 1
+            fi
+        done
+        
+        log_info "关键文件和目录检查通过"
     fi
     
     # 创建虚拟环境
@@ -542,6 +599,9 @@ main() {
     
     # 检查运行权限
     check_root
+    
+    # 预检查项目文件
+    check_project_files
     
     # 检查系统
     check_system
