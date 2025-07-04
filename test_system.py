@@ -47,7 +47,7 @@ def test_basic_functionality():
             })
             
             calculator = TDSequentialCalculator()
-            result = safe_execute(calculator.calculate_td_sequential, test_data)
+            result = safe_execute(calculator.calculate_td_setup, test_data)
             
             logger.info(f"九转序列计算成功，数据行数: {len(result)}")
             print(f"✓ 九转序列计算成功，数据行数: {len(result)}")

@@ -18,13 +18,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_config
 from utils import (
     get_logger, log_execution_time, handle_exceptions, file_cached,
-    ChartGenerationException, validate_kline_data, InputSanitizer, PerformanceMonitor
+    ChartGenerationException, validate_kline_data, input_sanitizer, PerformanceMonitor
 )
 class KLineChartPlotter:
     def __init__(self, output_dir=None):
         self.config = get_config()
         self.logger = get_logger('chart_plotter')
-        self.sanitizer = InputSanitizer()
+        self.sanitizer = input_sanitizer
         
         # 使用配置中的输出目录或传入的目录
         self.output_dir = output_dir or self.config.CHART_OUTPUT_DIR
@@ -37,7 +37,7 @@ class KLineChartPlotter:
         self.logger.info(f"K线图表绘制器初始化完成，输出目录: {self.output_dir}")
         self.logger.debug(f"图表尺寸: {self.chart_width}x{self.chart_height}")
     
-    @file_cached(timeout=1800, key_prefix='kline_chart_')
+    @file_cached(max_age=1800, key_prefix='kline_chart_')
     @log_execution_time
     @handle_exceptions(context='创建K线图表')
     def create_kline_chart(self, stock_code: str, stock_name: str, df: pd.DataFrame, 
@@ -353,7 +353,7 @@ class KLineChartPlotter:
                  chart_type='save'
              )
     
-    @file_cached(timeout=1800, key_prefix='summary_chart_')
+    @file_cached(max_age=1800, key_prefix='summary_chart_')
     @log_execution_time
     @handle_exceptions(context='创建汇总图表')
     def create_summary_chart(self, signal_stocks_df: pd.DataFrame) -> str:

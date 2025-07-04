@@ -21,6 +21,7 @@ class Config:
     
     # 图表目录
     HTML_CHARTS_DIR = os.path.join(BASE_DIR, 'html_charts')
+    CHART_OUTPUT_DIR = os.path.join(BASE_DIR, 'charts')
     
     # 日志配置
     LOG_DIR = os.path.join(BASE_DIR, 'logs')
@@ -66,6 +67,7 @@ class Config:
             cls.RAW_DATA_DIR,
             cls.PROCESSED_DATA_DIR,
             cls.HTML_CHARTS_DIR,
+            cls.CHART_OUTPUT_DIR,
             cls.LOG_DIR
         ]
         
