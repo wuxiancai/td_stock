@@ -41,10 +41,11 @@
 - 编译失败导致整个部署中断
 
 **解决方案：**
-- 在系统依赖安装中添加TA-Lib相关包：
+- 在系统依赖安装中添加编译工具：
   - `python3-dev`、`build-essential` (编译工具)
-  - `libta-lib0-dev`、`ta-lib-common`、`pkg-config`
-- 添加从源码编译TA-Lib的备选方案
+  - `pkg-config`、`wget` (配置和下载工具)
+- 完全依赖源码编译安装TA-Lib（系统包在某些Ubuntu版本中不可用）
+- 添加错误处理和临时文件清理机制
 - 将TA-Lib设为可选依赖，安装失败不影响主要功能
 - 创建 `install_talib_optional()` 函数，优雅处理安装失败
 
@@ -100,11 +101,21 @@
 
 1. **TA-Lib安装失败**
    ```bash
-   # 手动安装系统依赖
-   sudo apt install -y libta-lib0-dev ta-lib-common
+   # 方法1: 手动从源码编译安装
+   cd /tmp
+   wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+   tar -xzf ta-lib-0.4.0-src.tar.gz
+   cd ta-lib/
+   ./configure --prefix=/usr
+   make
+   sudo make install
+   sudo ldconfig
    
-   # 手动安装Python包
-   pip install TA-Lib
+   # 方法2: 使用conda安装（如果可用）
+   conda install -c conda-forge ta-lib
+   
+   # 方法3: 跳过TA-Lib，系统仍可正常运行
+   # TA-Lib是可选依赖，不影响核心九转序列功能
    ```
 
 2. **Python版本过低**

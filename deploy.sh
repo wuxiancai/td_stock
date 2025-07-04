@@ -165,28 +165,44 @@ install_dependencies() {
         tree \
         vim
     
-    # 安装 TA-Lib 系统依赖
-    log_info "安装 TA-Lib 系统依赖..."
+    # 安装 TA-Lib 编译依赖
+    log_info "安装 TA-Lib 编译依赖..."
     sudo apt install -y \
-        libta-lib0-dev \
-        ta-lib-common \
-        pkg-config
+        pkg-config \
+        wget
     
-    # 如果系统包不可用，从源码编译安装
+    # 从源码编译安装 TA-Lib
+    log_info "从源码编译安装 TA-Lib..."
+    
+    # 检查是否已安装
     if ! pkg-config --exists ta-lib; then
-        log_warn "系统包中没有 TA-Lib，将从源码编译安装..."
+        log_info "开始下载和编译 TA-Lib 源码..."
+        
+        # 创建临时目录
+        TEMP_DIR=$(mktemp -d)
+        cd "$TEMP_DIR"
         
         # 下载和编译 TA-Lib
-        cd /tmp
-        wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-        tar -xzf ta-lib-0.4.0-src.tar.gz
-        cd ta-lib/
-        ./configure --prefix=/usr
-        make
-        sudo make install
-        sudo ldconfig
+        if wget -q http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz; then
+            tar -xzf ta-lib-0.4.0-src.tar.gz
+            cd ta-lib/
+            
+            # 配置和编译
+            if ./configure --prefix=/usr && make && sudo make install; then
+                sudo ldconfig
+                log_info "TA-Lib 源码编译安装成功"
+            else
+                log_warn "TA-Lib 编译失败，将跳过系统级安装"
+            fi
+        else
+            log_warn "TA-Lib 源码下载失败，将跳过系统级安装"
+        fi
         
-        log_info "TA-Lib 源码编译安装完成"
+        # 清理临时文件
+        cd /
+        rm -rf "$TEMP_DIR"
+    else
+        log_info "TA-Lib 已安装，跳过编译"
     fi
     
     log_info "基础依赖安装完成"
