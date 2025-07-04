@@ -12,6 +12,15 @@ export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 export PYTHONIOENCODING=utf-8
 
+# 获取脚本所在目录（项目根目录）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -z "$SCRIPT_DIR" || "$SCRIPT_DIR" == "/" ]]; then
+    echo "错误: 无法确定脚本所在目录"
+    echo "当前工作目录: $(pwd)"
+    echo "请确保在项目根目录运行此脚本"
+    exit 1
+fi
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -80,7 +89,7 @@ check_python_version() {
 check_project_files() {
     log_step "检查项目文件完整性..."
     
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    # 使用全局SCRIPT_DIR变量
     cd "$SCRIPT_DIR"
     
     # 检查关键文件
@@ -281,11 +290,34 @@ setup_python_env() {
     
     # 复制项目文件
     log_info "复制项目文件..."
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    
+    # 使用全局SCRIPT_DIR变量，如果不存在则重新获取
+    if [[ -z "$SCRIPT_DIR" ]]; then
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    fi
+    
+    # 验证源目录路径
+    log_info "源目录路径: $SCRIPT_DIR"
+    
+    # 检查源目录是否为根目录（异常情况）
+    if [[ "$SCRIPT_DIR" == "/" ]]; then
+        log_error "检测到异常的源目录路径: $SCRIPT_DIR"
+        log_error "请确保在项目根目录运行此脚本"
+        log_error "当前工作目录: $(pwd)"
+        exit 1
+    fi
+    
+    # 检查源目录是否存在且包含文件
+    if [[ ! -d "$SCRIPT_DIR" ]]; then
+        log_error "源目录不存在: $SCRIPT_DIR"
+        exit 1
+    fi
     
     # 检查源目录是否存在文件
     if ! ls "$SCRIPT_DIR"/* >/dev/null 2>&1; then
         log_error "源目录 $SCRIPT_DIR 中没有找到文件"
+        log_error "目录内容:"
+        ls -la "$SCRIPT_DIR" || true
         exit 1
     fi
     
@@ -731,6 +763,14 @@ main() {
     echo "  适用系统: Ubuntu 22.04 Server"
     echo "  版本: 1.0"
     echo "======================================"
+    echo
+    
+    # 显示基本信息
+    log_info "脚本执行信息:"
+    log_info "  脚本路径: ${BASH_SOURCE[0]}"
+    log_info "  项目目录: $SCRIPT_DIR"
+    log_info "  当前用户: $(whoami)"
+    log_info "  工作目录: $(pwd)"
     echo
     
     # 检查运行权限

@@ -49,6 +49,19 @@
 - 将TA-Lib设为可选依赖，安装失败不影响主要功能
 - 创建 `install_talib_optional()` 函数，优雅处理安装失败
 
+### 4. 项目路径解析问题
+
+**问题描述：**
+- 脚本路径解析失败，显示 `[ERROR] 源目录 / 中没有找到文件`
+- 使用 `$0` 在某些环境下无法正确获取脚本路径
+
+**解决方案：**
+- 使用 `${BASH_SOURCE[0]}` 替代 `$0` 进行路径解析
+- 添加全局 `SCRIPT_DIR` 变量，确保路径一致性
+- 增加路径验证逻辑，检测异常路径（如根目录 `/`）
+- 添加详细的调试信息，显示脚本路径、项目目录等
+- 创建专门的路径故障排除文档
+
 ## 修改的文件
 
 ### 1. deploy.sh
@@ -57,11 +70,17 @@
 - 改进 `install_dependencies()` 函数，增加TA-Lib系统依赖
 - 添加 `install_talib_optional()` 函数
 - 重构 `setup_python_env()` 函数的文件复制逻辑
+- 使用 `${BASH_SOURCE[0]}` 改进路径解析
+- 添加全局 `SCRIPT_DIR` 变量和路径验证
+- 增加详细的脚本执行信息显示
 
 ### 2. requirements.txt
-- 注释掉Python内置的依赖包
-- 降低核心依赖包的版本要求
-- 将 `ta-lib` 设为可选依赖
+- 将 `ta-lib` 标记为可选依赖
+- 注释掉版本要求，防止安装失败阻塞部署
+
+### 3. 新增文档
+- `ENCODING_TROUBLESHOOTING.md`: 字符编码问题故障排除指南
+- `PATH_TROUBLESHOOTING.md`: 路径问题故障排除指南
 
 ## 部署流程优化
 
@@ -118,13 +137,41 @@
    # TA-Lib是可选依赖，不影响核心九转序列功能
    ```
 
-2. **Python版本过低**
+2. **路径解析失败**
+   如果遇到 `[ERROR] 源目录 / 中没有找到文件` 错误：
+   ```bash
+   # 确保在项目根目录执行脚本
+   cd /path/to/td_stock
+   ./deploy.sh
+   
+   # 检查脚本权限
+   chmod +x deploy.sh
+   
+   # 使用绝对路径
+   bash /full/path/to/td_stock/deploy.sh
+   ```
+   详细解决方案请参考 `PATH_TROUBLESHOOTING.md` 文档。
+
+3. **字符编码问题**
+   如果遇到中文字符显示乱码：
+   ```bash
+   # 检查系统编码设置
+   locale
+   echo $LANG
+   
+   # 手动设置UTF-8编码
+   export LANG=C.UTF-8
+   export LC_ALL=C.UTF-8
+   ```
+   详细解决方案请参考 `ENCODING_TROUBLESHOOTING.md` 文档。
+
+4. **Python版本过低**
    ```bash
    # 升级Python（Ubuntu）
    sudo apt install python3.8 python3.8-venv python3.8-dev
    ```
 
-3. **依赖包版本冲突**
+5. **依赖包版本冲突**
    ```bash
    # 清理pip缓存
    pip cache purge
