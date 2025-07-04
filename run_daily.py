@@ -81,7 +81,7 @@ class TDSequentialAnalysisSystem:
         start_time = datetime.now()
         self.logger.info(f"开始执行每日九转序列分析任务 - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         
-        with PerformanceMonitor("每日分析任务", self.logger):
+        with PerformanceMonitor("每日分析任务"):
             try:
                 # 步骤1: 获取股票数据
                 self.logger.info("步骤1: 获取股票数据")

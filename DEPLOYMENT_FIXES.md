@@ -62,6 +62,22 @@
 - 添加详细的调试信息，显示脚本路径、项目目录等
 - 创建专门的路径故障排除文档
 
+### 5. PerformanceMonitor参数错误
+
+**问题描述：**
+- 系统测试失败，错误信息为 `PerformanceMonitor.__init__() takes 2 positional arguments but 3 were given`
+- 多个文件中错误地传递了两个参数（`name` 和 `logger`）
+
+**原因分析：**
+- `PerformanceMonitor` 类的 `__init__` 方法只接受一个参数 `name`
+- 多个文件中错误地传递了两个参数
+
+**解决方案：**
+- 修复 `test_system.py` 中的两处调用
+- 修复 `run_daily.py` 中的调用
+- 修复 `web/app.py` 中的四处调用
+- 统一使用 `PerformanceMonitor("任务名称")` 的调用方式
+
 ## 修改的文件
 
 ### 1. deploy.sh
@@ -73,12 +89,19 @@
 - 使用 `${BASH_SOURCE[0]}` 改进路径解析
 - 添加全局 `SCRIPT_DIR` 变量和路径验证
 - 增加详细的脚本执行信息显示
+- 改进服务启动逻辑，修复supervisor配置问题
 
 ### 2. requirements.txt
 - 将 `ta-lib` 标记为可选依赖
 - 注释掉版本要求，防止安装失败阻塞部署
 
-### 3. 新增文档
+### 3. Python应用文件
+- `test_system.py` - 修复 PerformanceMonitor 参数错误（2处调用）
+- `run_daily.py` - 修复 PerformanceMonitor 参数错误（1处调用）
+- `web/app.py` - 修复 PerformanceMonitor 参数错误（4处调用）
+- 统一修改为 `PerformanceMonitor(name)` 单参数调用方式
+
+### 4. 新增文档
 - `ENCODING_TROUBLESHOOTING.md`: 字符编码问题故障排除指南
 - `PATH_TROUBLESHOOTING.md`: 路径问题故障排除指南
 
@@ -178,6 +201,29 @@
    
    # 重新安装
    pip install -r requirements.txt --force-reinstall
+   ```
+
+6. **服务启动失败**
+   ```bash
+   # 检查服务状态
+   sudo supervisorctl status
+   
+   # 查看服务日志
+   sudo supervisorctl tail -f td_analysis_web
+   
+   # 重启服务
+   sudo supervisorctl restart td_analysis_web
+   
+   # 检查端口占用
+   sudo netstat -tlnp | grep :80
+   ```
+
+7. **PerformanceMonitor参数错误**
+   如果遇到 `takes 2 positional arguments but 3 were given` 错误：
+   ```bash
+   # 检查代码中的调用方式，应该使用单参数
+   # 错误：PerformanceMonitor("任务名称", logger)
+   # 正确：PerformanceMonitor("任务名称")
    ```
 
 ### 日志查看

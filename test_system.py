@@ -29,7 +29,7 @@ def test_basic_functionality():
     logger.info("开始测试九转序列系统基本功能...")
     print("开始测试九转序列系统基本功能...")
     
-    with PerformanceMonitor("基本功能测试", logger):
+    with PerformanceMonitor("基本功能测试"):
         try:
             # 测试九转序列计算
             logger.info("测试九转序列计算模块")
@@ -117,7 +117,7 @@ def test_with_real_data():
     logger.info("开始真实数据测试...")
     print("\n开始真实数据测试...")
     
-    with PerformanceMonitor("真实数据测试", logger):
+    with PerformanceMonitor("真实数据测试"):
         try:
             from core.fetch_data import StockDataFetcher
             from core.td_calc import TDSequentialCalculator

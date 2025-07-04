@@ -100,7 +100,7 @@ def index():
     """
     主页 - 显示信号股票列表
     """
-    with PerformanceMonitor("主页加载", logger):
+    with PerformanceMonitor("主页加载"):
         try:
             signal_stocks, file_date = analyzer.get_latest_signal_stocks()
             
@@ -147,7 +147,7 @@ def show_chart(stock_code):
     """
     显示指定股票的K线图
     """
-    with PerformanceMonitor(f"加载图表-{stock_code}", logger):
+    with PerformanceMonitor(f"加载图表-{stock_code}"):
         try:
             if not stock_code or not stock_code.strip():
                 logger.warning("股票代码为空")
@@ -173,7 +173,7 @@ def api_stocks():
     """
     API接口 - 返回信号股票JSON数据
     """
-    with PerformanceMonitor("API获取股票数据", logger):
+    with PerformanceMonitor("API获取股票数据"):
         try:
             signal_stocks, file_date = analyzer.get_latest_signal_stocks()
             
@@ -217,7 +217,7 @@ def summary():
     """
     汇总页面
     """
-    with PerformanceMonitor("加载汇总图表", logger):
+    with PerformanceMonitor("加载汇总图表"):
         try:
             # 查找汇总图表文件
             summary_files = glob.glob(os.path.join(html_dir, 'signal_summary_*.html'))

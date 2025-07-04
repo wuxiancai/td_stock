@@ -677,25 +677,37 @@ start_services() {
     
     PROJECT_DIR="/home/$(whoami)/td_analysis"
     
-    # 启动Supervisor服务
-    sudo supervisorctl start td_analysis_web
-    sudo supervisorctl start td_analysis_scheduler
-    
-    # 等待服务启动
-    sleep 5
-    
-    # 检查服务状态
+    # 检查并启动Web服务
     if sudo supervisorctl status td_analysis_web | grep -q RUNNING; then
-        log_info "Web服务启动成功"
+        log_info "Web服务已在运行"
     else
-        log_error "Web服务启动失败"
+        log_info "启动Web服务..."
+        sudo supervisorctl start td_analysis_web
+        sleep 3
+        if sudo supervisorctl status td_analysis_web | grep -q RUNNING; then
+            log_info "Web服务启动成功"
+        else
+            log_error "Web服务启动失败"
+            return 1
+        fi
     fi
     
+    # 检查并启动调度服务
     if sudo supervisorctl status td_analysis_scheduler | grep -q RUNNING; then
-        log_info "调度服务启动成功"
+        log_info "调度服务已在运行"
     else
-        log_error "调度服务启动失败"
+        log_info "启动调度服务..."
+        sudo supervisorctl start td_analysis_scheduler
+        sleep 3
+        if sudo supervisorctl status td_analysis_scheduler | grep -q RUNNING; then
+            log_info "调度服务启动成功"
+        else
+            log_error "调度服务启动失败"
+            return 1
+        fi
     fi
+    
+    log_info "所有服务状态正常"
 }
 
 # 运行测试
