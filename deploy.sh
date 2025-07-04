@@ -152,6 +152,8 @@ install_dependencies() {
         python3 \
         python3-pip \
         python3-venv \
+        python3-dev \
+        build-essential \
         git \
         curl \
         wget \
@@ -163,7 +165,44 @@ install_dependencies() {
         tree \
         vim
     
+    # 安装 TA-Lib 系统依赖
+    log_info "安装 TA-Lib 系统依赖..."
+    sudo apt install -y \
+        libta-lib0-dev \
+        ta-lib-common \
+        pkg-config
+    
+    # 如果系统包不可用，从源码编译安装
+    if ! pkg-config --exists ta-lib; then
+        log_warn "系统包中没有 TA-Lib，将从源码编译安装..."
+        
+        # 下载和编译 TA-Lib
+        cd /tmp
+        wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+        tar -xzf ta-lib-0.4.0-src.tar.gz
+        cd ta-lib/
+        ./configure --prefix=/usr
+        make
+        sudo make install
+        sudo ldconfig
+        
+        log_info "TA-Lib 源码编译安装完成"
+    fi
+    
     log_info "基础依赖安装完成"
+}
+
+# 可选安装 TA-Lib Python包
+install_talib_optional() {
+    log_step "尝试安装 TA-Lib Python包..."
+    
+    # 尝试安装 TA-Lib
+    if pip install TA-Lib; then
+        log_info "TA-Lib Python包安装成功"
+    else
+        log_warn "TA-Lib Python包安装失败，将跳过技术指标功能"
+        log_warn "如需使用技术指标，请手动安装: pip install TA-Lib"
+    fi
 }
 
 # 配置Python环境
@@ -233,9 +272,12 @@ setup_python_env() {
     # 升级pip
     pip install --upgrade pip
     
-    # 安装项目依赖
+    # 安装Python依赖
     log_info "安装Python依赖包..."
     pip install -r requirements.txt
+    
+    # 尝试安装 ta-lib（可选）
+    install_talib_optional
     
     # 创建必要目录
     mkdir -p data/raw data/processed html_charts logs
