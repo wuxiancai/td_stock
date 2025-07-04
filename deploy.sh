@@ -123,7 +123,18 @@ setup_python_env() {
     
     # 复制项目文件
     log_info "复制项目文件..."
-    cp -r "$(dirname "$0")"/* .
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [[ "$SCRIPT_DIR" != "$PROJECT_DIR" ]]; then
+        # 检查源目录是否存在文件
+        if ls "$SCRIPT_DIR"/* >/dev/null 2>&1; then
+            cp -r "$SCRIPT_DIR"/* .
+        else
+            log_error "源目录 $SCRIPT_DIR 中没有找到文件"
+            exit 1
+        fi
+    else
+        log_info "脚本已在目标目录中运行，跳过文件复制"
+    fi
     
     # 创建虚拟环境
     python3 -m venv venv
